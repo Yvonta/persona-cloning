@@ -42,6 +42,8 @@ public class Main : MonoBehaviour
     [Tooltip("Drag Universal Render Pipeline/Lit or Standard shader here in the Inspector")]
     [SerializeField] private Shader fallbackShader;
 
+    private EgoLinkJsonRpcClient _rpcClient;
+
     private EgoLinkAvatar _player;
 
     private EgoLinkSession session;
@@ -223,7 +225,8 @@ public class Main : MonoBehaviour
             uiLogin.SetStatusMessage("Checking existing session...");
         }
 
-        this.session = new EgoLinkSession(jsonRpcUrl);
+        _rpcClient = new EgoLinkJsonRpcClient(jsonRpcUrl);
+        this.session = new EgoLinkSession(_rpcClient);
 
         _userstats = await session.UserStatsAsync();
         Debug.Log("Users online: " + _userstats.data.usersonline);
@@ -399,7 +402,7 @@ public class Main : MonoBehaviour
     {
         Debug.Log($"Register submitted for: {email}, Name: {name}");
 
-        EgoLinkSession newSession = new EgoLinkSession(jsonRpcUrl);
+        EgoLinkSession newSession = new EgoLinkSession(_rpcClient);
 
         string gender = "m";
         switch(genderInput)
@@ -430,7 +433,7 @@ public class Main : MonoBehaviour
 
         if (this.session == null)
         {
-            this.session = new EgoLinkSession(jsonRpcUrl);
+            this.session = new EgoLinkSession(_rpcClient);
         }
 
         try
@@ -457,6 +460,13 @@ public class Main : MonoBehaviour
     
     private async Task RunAvatarWorkflow(EgoLinkSession session)
     {
+        /*StorageManager remoteStorage = GetComponent<StorageManager>();
+        if(remoteStorage == null)
+        {
+            remoteStorage = gameObject.AddComponent<StorageManager>();
+        }
+        remoteStorage.Test();*/
+        
         if (uiTextToSpeechDialog != null)
         {
             uiTextToSpeechDialog.gameObject.SetActive(true);
@@ -476,9 +486,9 @@ public class Main : MonoBehaviour
 
     private async Task<EgoLinkAvatar> LoadAndInitializeAvatar(EgoLinkSession session, float x, float y, float z, float avatarGender, string avatarFaceImagePath, string targetClothing, string targetHair, Vector3 accessoryPositionOffset)
     {
-        EgoLinkAvatar avatar = new EgoLinkAvatar(avatarGenUrl, clothingUrl, hairUrl, session);
+        EgoLinkAvatar avatar = new EgoLinkAvatar(avatarGenUrl, clothingUrl, hairUrl, session, _rpcClient);
 
-        if (avatar.TryLoadFromCache(targetClothing, targetHair, avatarGender, age, weight))
+        if (await avatar.TryLoadFromCache(targetClothing, targetHair, avatarGender, age, weight))
         {
             Debug.Log($"[Workflow] Loaded avatar setup from cache for position ({x},{y},{z}).");
         }
