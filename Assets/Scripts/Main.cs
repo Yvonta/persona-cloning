@@ -19,9 +19,6 @@ public class Main : MonoBehaviour
     [SerializeField] private string hairUrl = "https://yvonta.com/appapi/v2/hair.php";
     [SerializeField] private string sttUrl = "https://yvonta.com/appapi/v2/stt.php";
 
-#pragma warning disable 0414
-    [SerializeField] private string ttsUrl = "https://yvonta.com/appapi/v2/tts.php";
-#pragma warning restore 0414
 
     [SerializeField] private string llmUrl = "https://yvonta.com/appapi/v2/llm.php";
     [SerializeField] private string voiceCloningUrl = "https://yvonta.com/appapi/v2/voicecloning.php";
