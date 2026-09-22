@@ -9,6 +9,9 @@ using Yvonta;
 
 public class Main : MonoBehaviour
 {
+    [Header("UI Canvas")]
+    [SerializeField] private GameObject canvasObj;
+
     [Header("Server Endpoints")]
     [SerializeField] private string jsonRpcUrl = "https://yvonta.com/appapi/v2/xbot.php";
     [SerializeField] private string avatarGenUrl = "https://yvonta.com/appapi/v2/avatargen.php";
@@ -21,12 +24,12 @@ public class Main : MonoBehaviour
 #pragma warning restore 0414
 
     [SerializeField] private string llmUrl = "https://yvonta.com/appapi/v2/llm.php";
-
     [SerializeField] private string voiceCloningUrl = "https://yvonta.com/appapi/v2/voicecloning.php";
 
     [Header("UI References")]
     [SerializeField] private UILogin uiLogin;
     [SerializeField] private UIRegister uiRegister;
+    [SerializeField] private UIBalance uiBalance;
 
     [Header("Avatar Generation Parameters")]
     [SerializeField] private string faceImagePath = "Assets/Faces/dirkjan.jpg";
@@ -43,9 +46,7 @@ public class Main : MonoBehaviour
     [SerializeField] private Shader fallbackShader;
 
     private EgoLinkJsonRpcClient _rpcClient;
-
     private EgoLinkAvatar _player;
-
     private EgoLinkSession session;
     private AudioMic audioMic;
 
@@ -140,19 +141,29 @@ public class Main : MonoBehaviour
 
         EgoLinkSubtitles.Initialize();
 
+        // 1. Locate or create Canvas
         GameObject canvasObj = GameObject.Find("GeneratedCanvas");
         if (canvasObj == null)
         {
-            canvasObj = new GameObject("GeneratedCanvas");
-            Canvas canvas = canvasObj.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObj.AddComponent<CanvasScaler>();
-            canvasObj.AddComponent<GraphicRaycaster>();
+            Canvas existingCanvas = FindFirstObjectByType<Canvas>();
+            if (existingCanvas != null)
+            {
+                canvasObj = existingCanvas.gameObject;
+            }
+            else
+            {
+                canvasObj = new GameObject("GeneratedCanvas");
+                Canvas canvas = canvasObj.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvasObj.AddComponent<CanvasScaler>();
+                canvasObj.AddComponent<GraphicRaycaster>();
+            }
         }
 
+        // 2. Fix UI Login assignment - search children if direct component is missing
         if (uiLogin == null)
         {
-            uiLogin = canvasObj.GetComponent<UILogin>();
+            uiLogin = canvasObj.GetComponentInChildren<UILogin>(true);
             if (uiLogin == null)
             {
                 uiLogin = canvasObj.AddComponent<UILogin>();
@@ -160,9 +171,10 @@ public class Main : MonoBehaviour
             }
         }
 
+        // 3. Fix UI Register assignment
         if (uiRegister == null)
         {
-            uiRegister = canvasObj.GetComponent<UIRegister>();
+            uiRegister = canvasObj.GetComponentInChildren<UIRegister>(true);
             if (uiRegister == null)
             {
                 uiRegister = canvasObj.AddComponent<UIRegister>();
@@ -170,7 +182,21 @@ public class Main : MonoBehaviour
             }
         }
 
-        // Configure configurable options/buttons here
+        // Initialize UIBalance
+        if (uiBalance == null)
+        {
+            uiBalance = canvasObj.GetComponentInChildren<UIBalance>(true);
+            if (uiBalance == null)
+            {
+                uiBalance = canvasObj.AddComponent<UIBalance>();
+                uiBalance.BuildUI(canvasObj.transform);
+            }
+        }
+
+        // Hide UI elements by default
+        if (uiBalance != null) uiBalance.gameObject.SetActive(false);
+
+        // Configure options
         var options = new List<UISettingsDialog.SettingsOption>
         {
             new UISettingsDialog.SettingsOption("Clone Voice", () => {
@@ -178,7 +204,7 @@ public class Main : MonoBehaviour
                 
                 if (uiVoiceCloning == null)
                 {
-                    uiVoiceCloning = canvasObj.GetComponent<UiVoiceCloning>();
+                    uiVoiceCloning = canvasObj.GetComponentInChildren<UiVoiceCloning>(true);
                     if (uiVoiceCloning == null)
                     {
                         uiVoiceCloning = canvasObj.AddComponent<UiVoiceCloning>();
@@ -186,7 +212,6 @@ public class Main : MonoBehaviour
                     }
                 }
 
-                // Subscribe to recording event and ensure dialog visibility
                 uiVoiceCloning.OnAudioRecorded -= HandleVoiceCloningRecorded;
                 uiVoiceCloning.OnAudioRecorded += HandleVoiceCloningRecorded;
                 uiVoiceCloning.SetVisible(true);
@@ -195,14 +220,14 @@ public class Main : MonoBehaviour
                 Debug.Log("Clone Avatar Clicked");
             }),
             new UISettingsDialog.SettingsOption("Clone Persona", () => {
-                Debug.Log("Clone Presona Clicked");
+                Debug.Log("Clone Persona Clicked");
             })
         };
-
 
         uiTextToSpeechDialog.BuildUI(canvasObj.transform, options);
         uiTextToSpeechDialog.SetVisible(false);
 
+        // Ensure Login is visible and Register is hidden on Awake
         if (uiLogin != null) uiLogin.SetVisible(true);
         if (uiRegister != null) uiRegister.SetVisible(false);
 
@@ -218,9 +243,11 @@ public class Main : MonoBehaviour
     {        
         bool islogin = false;
 
+        // Ensure canvas and UI Login GameObject are enabled
         if (uiLogin != null)
         {
-            uiLogin.SetVisible(false);
+            uiLogin.gameObject.SetActive(true);
+            uiLogin.SetVisible(true);
             uiLogin.SetInteractable(false);
             uiLogin.SetStatusMessage("Checking existing session...");
         }
@@ -228,9 +255,16 @@ public class Main : MonoBehaviour
         _rpcClient = new EgoLinkJsonRpcClient(jsonRpcUrl);
         this.session = new EgoLinkSession(_rpcClient);
 
-        _userstats = await session.UserStatsAsync();
-        Debug.Log("Users online: " + _userstats.data.usersonline);
-        Debug.Log("Users total: " + _userstats.data.userstotal);
+        try
+        {
+            _userstats = await session.UserStatsAsync();
+            Debug.Log("Users online: " + _userstats.data.usersonline);
+            Debug.Log("Users total: " + _userstats.data.userstotal);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"User stats fetch failed: {ex.Message}");
+        }
 
         if (!string.IsNullOrEmpty(session.StoredCookie))
         {
@@ -247,7 +281,15 @@ public class Main : MonoBehaviour
                     if (uiLogin != null)
                     {                        
                         uiLogin.SetVisible(false);
+                        uiLogin.gameObject.SetActive(false);
                     }
+
+                    // Enable balance button and start 5-minute interval updates
+                    if (uiBalance != null)
+                    {
+                        uiBalance.gameObject.SetActive(true);
+                    }
+                    StartBalanceUpdates();
 
                     await RunAvatarWorkflow(session);
                     return;
@@ -260,17 +302,23 @@ public class Main : MonoBehaviour
             }
         }
 
+        // Show UI for login if auto-login didn't occur
         if (uiLogin != null)
         {
+            uiLogin.gameObject.SetActive(true);
             uiLogin.SetVisible(true);
             uiLogin.SetInteractable(true);
             uiLogin.SetStatusMessage("Please log in.");
         }
     }
-
+    
     private async void Stop()
     {
-        await session.LogoutAsync();
+        StopBalanceUpdates();
+        if (session != null)
+        {
+            await session.LogoutAsync();
+        }
     }
 
     private void OnEnable()
@@ -302,6 +350,8 @@ public class Main : MonoBehaviour
 
     private void OnDisable()
     {
+        StopBalanceUpdates();
+
         if (uiTextToSpeechDialog != null)
         {
             uiTextToSpeechDialog.OnTextSubmitted -= HandleTTSDialogTextSubmitted;
@@ -327,6 +377,42 @@ public class Main : MonoBehaviour
         }
     }
 
+    #region Balance Polling
+
+    private void StartBalanceUpdates()
+    {
+        StopBalanceUpdates();
+        // Calls RefreshBalanceRoutine every 300 seconds (5 minutes), starting immediately (0s delay)
+        InvokeRepeating(nameof(RefreshBalanceRoutine), 0f, 60f);
+    }
+
+    private void StopBalanceUpdates()
+    {
+        CancelInvoke(nameof(RefreshBalanceRoutine));
+    }
+
+    private async void RefreshBalanceRoutine()
+    {
+        await FetchAndUpdateBalance();
+    }
+
+    private async Task FetchAndUpdateBalance()
+    {
+        if (session == null || uiBalance == null) return;
+
+        try
+        {
+            long balance = await session.BalanceAsync();
+            uiBalance.SetBalance(balance.ToString());
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[Main] Failed to fetch balance: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     private async void HandleVoiceCloningRecorded(byte[] audioBytes, string targetSentence, string voiceName)
     {
         if (uiVoiceCloning != null)
@@ -349,7 +435,6 @@ public class Main : MonoBehaviour
             Debug.LogError("[Main] Voice cloning failed.");
         }
 
-        // Close the dialog after API processing finishes
         if (uiVoiceCloning != null)
         {
             uiVoiceCloning.SetVisible(false);
@@ -444,6 +529,12 @@ public class Main : MonoBehaviour
             ttsStreamer.Initialize(this.session, 0.1f, 0.5f);
             if (uiLogin != null) uiLogin.SetVisible(false);
 
+            if (uiBalance != null)
+            {
+                uiBalance.gameObject.SetActive(true);
+            }
+            StartBalanceUpdates();
+
             await RunAvatarWorkflow(this.session);
         }
         catch (System.Exception ex)
@@ -460,13 +551,6 @@ public class Main : MonoBehaviour
     
     private async Task RunAvatarWorkflow(EgoLinkSession session)
     {
-        /*StorageManager remoteStorage = GetComponent<StorageManager>();
-        if(remoteStorage == null)
-        {
-            remoteStorage = gameObject.AddComponent<StorageManager>();
-        }
-        remoteStorage.Test();*/
-        
         if (uiTextToSpeechDialog != null)
         {
             uiTextToSpeechDialog.gameObject.SetActive(true);
@@ -636,10 +720,8 @@ public class Main : MonoBehaviour
     {
         if (loadedModel == null) return;
 
-        // 1. Try to grab the target shader from fallbackShader first
         Shader targetShader = fallbackShader;
 
-        // 2. Fallback to Unity's default primitive material shader if null
         if (targetShader == null)
         {
             GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -662,12 +744,10 @@ public class Main : MonoBehaviour
             {
                 if (mat == null) continue;
 
-                // Save all textures before assigning shader
                 Texture baseTex = mat.mainTexture ?? mat.GetTexture("_BaseMap") ?? mat.GetTexture("_MainTex");
 
                 mat.shader = targetShader;
 
-                // Re-bind texture to both URP and Standard slots
                 if (baseTex != null)
                 {
                     if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", baseTex);

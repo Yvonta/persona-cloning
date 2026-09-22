@@ -206,7 +206,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalPosition: {x: 0, y: 1, z: -2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -491,16 +491,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3b693ba8c7994c1bacdb0dc0b0d966b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Main
-  jsonRpcUrl: https://yvonta.net/appapi/v2/xbot.php
-  avatarGenUrl: https://yvonta.net/appapi/v2/avatargen.php
-  clothingUrl: https://yvonta.net/appapi/v2/clothing.php
-  hairUrl: https://yvonta.net/appapi/v2/hair.php
-  sttUrl: https://yvonta.net/appapi/v2/stt.php
-  ttsUrl: https://yvonta.net/appapi/v2/tts.php
-  llmUrl: https://yvonta.net/appapi/v2/llm.php
-  voiceCloningUrl: https://yvonta.net/appapi/v2/voicecloning.php
+  canvasObj: {fileID: 0}
+  jsonRpcUrl: https://yvonta.com/appapi/v2/xbot.php
+  avatarGenUrl: https://yvonta.com/appapi/v2/avatargen.php
+  clothingUrl: https://yvonta.com/appapi/v2/clothing.php
+  hairUrl: https://yvonta.com/appapi/v2/hair.php
+  sttUrl: https://yvonta.com/appapi/v2/stt.php
+  ttsUrl: https://yvonta.com/appapi/v2/tts.php
+  llmUrl: https://yvonta.com/appapi/v2/llm.php
+  voiceCloningUrl: https://yvonta.com/appapi/v2/voicecloning.php
   uiLogin: {fileID: 0}
   uiRegister: {fileID: 0}
+  uiBalance: {fileID: 0}
   faceImagePath: Assets/Faces/dirkjan.jpg
   gender: 1
   age: 0.8
