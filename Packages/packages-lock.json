@@ -246,11 +246,10 @@
       "url": "https://packages.unity.com"
     },
     "com.yvonta.egolink": {
-      "version": "https://github.com/Yvonta/egolink.git",
+      "version": "file:/Users/dirkjan/Documents/GitHub/egolink",
       "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "661d21714eace47b649296aa9ada56ce9f2e780d"
+      "source": "local",
+      "dependencies": {}
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",

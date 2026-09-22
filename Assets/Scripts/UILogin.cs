@@ -18,17 +18,19 @@ using Yvonta;
         public UnityEvent<string, string> OnLoginSubmitted = new UnityEvent<string, string>();
         public UnityEvent OnRegisterClicked = new UnityEvent();
 
+        private const string userEmailKey = "SavedUserEmail";
+
         public void BuildUI(Transform parentCanvasTransform)
         {
             if (dialogPanelObj != null) return;
 
             dialogPanelObj = UIHelper.CreatePanel(
-    parentCanvasTransform,
-    "LoginPanel",
-    new Vector2(440, 400),                           // Height adjusted to hold status text
-    new RectOffset(35, 35, 20, 20),                  // Reduced top/bottom padding to 20
-    10f                                              // Spacing between elements set to 10
-);
+                parentCanvasTransform,
+                "LoginPanel",
+                new Vector2(440, 400),                           // Height adjusted to hold status text
+                new RectOffset(35, 35, 20, 20),                  // Reduced top/bottom padding to 20
+                10f                                              // Spacing between elements set to 10
+            );
 
             UIHelper.CreateHeader(
                 dialogPanelObj.transform,
@@ -76,6 +78,12 @@ using Yvonta;
             if (loginButton != null) loginButton.onClick.AddListener(HandleLoginClicked);
             if (registerButton != null) registerButton.onClick.AddListener(HandleRegisterClicked);
 
+            if (PlayerPrefs.HasKey(userEmailKey))
+            {
+                emailInputField.text = PlayerPrefs.GetString(userEmailKey);
+            }
+
+
             SetVisible(true);
         }
 
@@ -115,6 +123,10 @@ using Yvonta;
                 SetStatusMessage("Please fill in both fields.");
                 return;
             }
+
+
+            PlayerPrefs.SetString(userEmailKey, email);
+            PlayerPrefs.Save(); // Force write to disk
 
             SetStatusMessage(string.Empty);
             OnLoginSubmitted?.Invoke(email, password);

@@ -10,19 +10,19 @@ using Yvonta;
 public class Main : MonoBehaviour
 {
     [Header("Server Endpoints")]
-    [SerializeField] private string jsonRpcUrl = "https://yvonta.net/appapi/v2/xbot.php";
-    [SerializeField] private string avatarGenUrl = "https://yvonta.net/appapi/v2/avatargen.php";
-    [SerializeField] private string clothingUrl = "https://yvonta.net/appapi/v2/clothing.php";
-    [SerializeField] private string hairUrl = "https://yvonta.net/appapi/v2/hair.php";
-    [SerializeField] private string sttUrl = "https://yvonta.net/appapi/v2/stt.php";
+    [SerializeField] private string jsonRpcUrl = "https://yvonta.com/appapi/v2/xbot.php";
+    [SerializeField] private string avatarGenUrl = "https://yvonta.com/appapi/v2/avatargen.php";
+    [SerializeField] private string clothingUrl = "https://yvonta.com/appapi/v2/clothing.php";
+    [SerializeField] private string hairUrl = "https://yvonta.com/appapi/v2/hair.php";
+    [SerializeField] private string sttUrl = "https://yvonta.com/appapi/v2/stt.php";
 
 #pragma warning disable 0414
-    [SerializeField] private string ttsUrl = "https://yvonta.net/appapi/v2/tts.php";
+    [SerializeField] private string ttsUrl = "https://yvonta.com/appapi/v2/tts.php";
 #pragma warning restore 0414
 
-    [SerializeField] private string llmUrl = "https://yvonta.net/appapi/v2/llm.php";
+    [SerializeField] private string llmUrl = "https://yvonta.com/appapi/v2/llm.php";
 
-    [SerializeField] private string voiceCloningUrl = "https://yvonta.net/appapi/v2/voicecloning.php";
+    [SerializeField] private string voiceCloningUrl = "https://yvonta.com/appapi/v2/voicecloning.php";
 
     [Header("UI References")]
     [SerializeField] private UILogin uiLogin;
