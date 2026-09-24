@@ -9,7 +9,7 @@ public class UIBalance : MonoBehaviour
     private Text legacyText;
     private TextMeshProUGUI tmpText;
 
-    public string buyCreditsUrl = "https://yvonta.com/buy-credits";
+    public string buyCreditsUrl = "https://yvonta.com/en-buy-credits";
 
     public void BuildUI(Transform parent)
     {
