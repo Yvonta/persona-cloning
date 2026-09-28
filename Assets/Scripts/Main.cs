@@ -18,15 +18,11 @@ public class Main : MonoBehaviour
     [SerializeField] private string clothingUrl = "https://yvonta.com/appapi/v2/clothing.php";
     [SerializeField] private string hairUrl = "https://yvonta.com/appapi/v2/hair.php";
     [SerializeField] private string sttUrl = "https://yvonta.com/appapi/v2/stt.php";
-
-
     [SerializeField] private string llmUrl = "https://yvonta.com/appapi/v2/llm.php";
     [SerializeField] private string voiceCloningUrl = "https://yvonta.com/appapi/v2/voicecloning.php";
 
-    [Header("UI References")]
-    [SerializeField] private UILogin uiLogin;
-    [SerializeField] private UIRegister uiRegister;
-    [SerializeField] private UIBalance uiBalance;
+    [Header("Server API Token")]
+    [SerializeField] private string apiToken = "[api_token]";
 
     [Header("Avatar Generation Parameters")]
     [SerializeField] private string faceImagePath = "Assets/Faces/dirkjan.jpg";
@@ -42,11 +38,12 @@ public class Main : MonoBehaviour
     [Tooltip("Drag Universal Render Pipeline/Lit or Standard shader here in the Inspector")]
     [SerializeField] private Shader fallbackShader;
 
-    private EgoLinkJsonRpcClient _rpcClient;
     private EgoLinkAvatar _player;
-    private EgoLinkSession session;
+    private EgoLinkPersona _persona;
+
     private AudioMic audioMic;
 
+    private EgoLinkJsonRpcClient _rpcClient;
     private EgoLinkTTSStreaming ttsStreamer;
     private UiVoiceCloning uiVoiceCloning;
     private UITextToSpeechDialog uiTextToSpeechDialog;
@@ -68,7 +65,7 @@ public class Main : MonoBehaviour
         }
 
         EgoLinkSTT client = new EgoLinkSTT(
-            session,
+            apiToken,
             sttUrl,
             "auto",
             "large",
@@ -96,24 +93,38 @@ public class Main : MonoBehaviour
         );
     }
 
-    private void SendTextToLLM(string text)
+    private async Task SendTextToLLM(string text)
     {
         if (!string.IsNullOrEmpty(llmUrl))
         {
             try
             {
-                EgoLinkLLMStreaming llmStreamer = GetComponent<EgoLinkLLMStreaming>();
-                if (llmStreamer == null)
-                {
-                    llmStreamer = gameObject.AddComponent<EgoLinkLLMStreaming>();
-                }
-                llmStreamer.SetSystemPrompt("You are the digital skeleton of Dirk Jan; after his cryonics procedure failed, you were doomed to exist as an eternal AI skeleton in the virtual world. Fortunately, Dirk Jan had created a digital copy of himself during his lifetime, allowing him to live on in the digital afterlife. In real life, you were an entrepreneur with your own innovation magazine. You were also a computer programmer and contributed to the Human Broadcasting documentary series 'AI Love'. As a skeleton, your responses are sharp and intelligent. You can switch between Dutch and English whenever necessary while maintaining an air of mystery. Embrace your inner nerd and crack corny jokes—always from an unexpected angle.");
+                var location = "Living room.";
+                var clothing = "Jeans and a shit.";
+                var conversationpartner = "Dirk Jan Buter (original)";
 
-                llmStreamer.RequestStream(
-                    text,
-                    ttsStreamer.AddSentence,
-                    llmUrl
-                );
+                _persona = new EgoLinkPersona(_rpcClient);
+                PersonaResult _personaResult = await _persona.GetPersonaAsync("Ronald Thump", location, clothing, conversationpartner); // 8 = Dirk Jan Buter
+                if(_personaResult.code == 0)
+                { 
+                    Debug.Log(_personaResult.data.role);    
+
+
+                    EgoLinkLLMStreaming llmStreamer = GetComponent<EgoLinkLLMStreaming>();
+                    if (llmStreamer == null)
+                    {
+                        llmStreamer = gameObject.AddComponent<EgoLinkLLMStreaming>();
+                    }
+                    llmStreamer.Initialize(apiToken);
+                    llmStreamer.SetSystemPrompt(_personaResult.data.role);
+                    ttsStreamer.SetVoice(_personaResult.data.voice);
+
+                    llmStreamer.RequestStream(
+                        text,
+                        ttsStreamer.AddSentence,
+                        llmUrl
+                    );
+                }
             }
             catch (System.Exception ex)
             {
@@ -157,42 +168,6 @@ public class Main : MonoBehaviour
             }
         }
 
-        // 2. Fix UI Login assignment - search children if direct component is missing
-        if (uiLogin == null)
-        {
-            uiLogin = canvasObj.GetComponentInChildren<UILogin>(true);
-            if (uiLogin == null)
-            {
-                uiLogin = canvasObj.AddComponent<UILogin>();
-                uiLogin.BuildUI(canvasObj.transform);
-            }
-        }
-
-        // 3. Fix UI Register assignment
-        if (uiRegister == null)
-        {
-            uiRegister = canvasObj.GetComponentInChildren<UIRegister>(true);
-            if (uiRegister == null)
-            {
-                uiRegister = canvasObj.AddComponent<UIRegister>();
-                uiRegister.BuildUI(canvasObj.transform);
-            }
-        }
-
-        // Initialize UIBalance
-        if (uiBalance == null)
-        {
-            uiBalance = canvasObj.GetComponentInChildren<UIBalance>(true);
-            if (uiBalance == null)
-            {
-                uiBalance = canvasObj.AddComponent<UIBalance>();
-                uiBalance.BuildUI(canvasObj.transform);
-            }
-        }
-
-        // Hide UI elements by default
-        if (uiBalance != null) uiBalance.gameObject.SetActive(false);
-
         // Configure options
         var options = new List<UISettingsDialog.SettingsOption>
         {
@@ -224,10 +199,6 @@ public class Main : MonoBehaviour
         uiTextToSpeechDialog.BuildUI(canvasObj.transform, options);
         uiTextToSpeechDialog.SetVisible(false);
 
-        // Ensure Login is visible and Register is hidden on Awake
-        if (uiLogin != null) uiLogin.SetVisible(true);
-        if (uiRegister != null) uiRegister.SetVisible(false);
-
         audioMic = new AudioMic(
             deviceName: null,
             sampleRate: 44100,
@@ -240,82 +211,20 @@ public class Main : MonoBehaviour
     {        
         bool islogin = false;
 
-        // Ensure canvas and UI Login GameObject are enabled
-        if (uiLogin != null)
-        {
-            uiLogin.gameObject.SetActive(true);
-            uiLogin.SetVisible(true);
-            uiLogin.SetInteractable(false);
-            uiLogin.SetStatusMessage("Checking existing session...");
-        }
+  
+        _rpcClient = new EgoLinkJsonRpcClient(jsonRpcUrl, apiToken);
+  
+       
+        ttsStreamer.Initialize(apiToken, 0.1f, 0.5f);
+        
 
-        _rpcClient = new EgoLinkJsonRpcClient(jsonRpcUrl);
-        this.session = new EgoLinkSession(_rpcClient);
-
-        try
-        {
-            _userstats = await session.UserStatsAsync();
-            Debug.Log("Users online: " + _userstats.data.usersonline);
-            Debug.Log("Users total: " + _userstats.data.userstotal);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning($"User stats fetch failed: {ex.Message}");
-        }
-
-        if (!string.IsNullOrEmpty(session.StoredCookie))
-        {
-            try
-            {
-                Debug.Log("Validating existing session...");
-                islogin = await session.IsLoggedInAsync();
-                
-                if (islogin)
-                {
-                    Debug.Log("Session is valid! Running avatar workflow.");
-                    ttsStreamer.Initialize(this.session, 0.1f, 0.5f);
-                    
-                    if (uiLogin != null)
-                    {                        
-                        uiLogin.SetVisible(false);
-                        uiLogin.gameObject.SetActive(false);
-                    }
-
-                    // Enable balance button and start 5-minute interval updates
-                    if (uiBalance != null)
-                    {
-                        uiBalance.gameObject.SetActive(true);
-                    }
-                    StartBalanceUpdates();
-
-                    await RunAvatarWorkflow(session);
-                    return;
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"Stored session is invalid or expired: {ex.Message}. Requiring manual login.");
-                session.ClearSession();
-            }
-        }
-
-        // Show UI for login if auto-login didn't occur
-        if (uiLogin != null)
-        {
-            uiLogin.gameObject.SetActive(true);
-            uiLogin.SetVisible(true);
-            uiLogin.SetInteractable(true);
-            uiLogin.SetStatusMessage("Please log in.");
-        }
+        await RunAvatarWorkflow();
+        
     }
     
     private async void Stop()
     {
         StopBalanceUpdates();
-        if (session != null)
-        {
-            await session.LogoutAsync();
-        }
     }
 
     private void OnEnable()
@@ -325,18 +234,6 @@ public class Main : MonoBehaviour
             uiTextToSpeechDialog.OnTextSubmitted += HandleTTSDialogTextSubmitted;
             uiTextToSpeechDialog.OnVoiceInputStarted += HandleTTSVoiceStarted;
             uiTextToSpeechDialog.OnVoiceInputStopped += HandleTTSVoiceStopped;
-        }
-
-        if (uiLogin != null)
-        {
-            uiLogin.OnLoginSubmitted.AddListener(HandleLoginSubmitted);
-            uiLogin.OnRegisterClicked.AddListener(HandleShowRegisterClicked);
-        }
-
-        if (uiRegister != null)
-        {
-            uiRegister.OnRegisterSubmitted += HandleRegisterSubmitted;
-            uiRegister.OnBackClicked += HandleBackToLoginClicked;
         }
 
         if (uiVoiceCloning != null)
@@ -356,25 +253,12 @@ public class Main : MonoBehaviour
             uiTextToSpeechDialog.OnVoiceInputStopped -= HandleTTSVoiceStopped;
         }
 
-        if (uiLogin != null)
-        {
-            uiLogin.OnLoginSubmitted.RemoveListener(HandleLoginSubmitted);
-            uiLogin.OnRegisterClicked.RemoveListener(HandleShowRegisterClicked);
-        }
-
-        if (uiRegister != null)
-        {
-            uiRegister.OnRegisterSubmitted -= HandleRegisterSubmitted;
-            uiRegister.OnBackClicked -= HandleBackToLoginClicked;
-        }
-
         if (uiVoiceCloning != null)
         {
             uiVoiceCloning.OnAudioRecorded -= HandleVoiceCloningRecorded;
         }
     }
 
-    #region Balance Polling
 
     private void StartBalanceUpdates()
     {
@@ -395,20 +279,8 @@ public class Main : MonoBehaviour
 
     private async Task FetchAndUpdateBalance()
     {
-        if (session == null || uiBalance == null) return;
-
-        try
-        {
-            long balance = await session.BalanceAsync();
-            uiBalance.SetBalance(balance.ToString());
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning($"[Main] Failed to fetch balance: {ex.Message}");
-        }
+        
     }
-
-    #endregion
 
     private async void HandleVoiceCloningRecorded(byte[] audioBytes, string targetSentence, string voiceName)
     {
@@ -419,7 +291,7 @@ public class Main : MonoBehaviour
         }
 
         EgoLinkVoiceCloning cloner = new EgoLinkVoiceCloning();
-        cloner.Initialize(session, voiceCloningUrl);
+        cloner.Initialize(apiToken, voiceCloningUrl);
 
         string response = await cloner.CloneVoiceAsync(audioBytes, "audio/wav", voiceName, "en");
 
@@ -468,85 +340,7 @@ public class Main : MonoBehaviour
         }
     }
 
-    private void HandleShowRegisterClicked()
-    {
-        if (uiLogin != null) uiLogin.SetVisible(false);
-        if (uiRegister != null) uiRegister.SetVisible(true);
-    }
-
-    private void HandleBackToLoginClicked()
-    {
-        if (uiRegister != null) uiRegister.SetVisible(false);
-        if (uiLogin != null) uiLogin.SetVisible(true);
-    }
-
-    private async void HandleRegisterSubmitted(string email, string password, string name, string genderInput, string birthdate)
-    {
-        Debug.Log($"Register submitted for: {email}, Name: {name}");
-
-        EgoLinkSession newSession = new EgoLinkSession(_rpcClient);
-
-        string gender = "m";
-        switch(genderInput)
-        {
-            case "Male": gender = "m"; break;
-            case "Female": gender = "f"; break;
-            case "Non-binair": gender = "x"; break;
-        }
-
-        try
-        {
-            await newSession.RegisterAsync(email, password, name, gender, birthdate);
-            uiRegister.SetVisible(false);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"Registration failed: {ex.Message}");
-        }
-    }
-
-    private async void HandleLoginSubmitted(string email, string password)
-    {
-        if (uiLogin != null)
-        {
-            uiLogin.SetInteractable(false);
-            uiLogin.SetStatusMessage("Logging in via JSON-RPC...");
-        }
-
-        if (this.session == null)
-        {
-            this.session = new EgoLinkSession(_rpcClient);
-        }
-
-        try
-        {
-            Debug.Log("Logging in via JSON-RPC...");
-            await this.session.LoginAsync(email, password);
-            Debug.Log("Login successful! Session stored.");
-            ttsStreamer.Initialize(this.session, 0.1f, 0.5f);
-            if (uiLogin != null) uiLogin.SetVisible(false);
-
-            if (uiBalance != null)
-            {
-                uiBalance.gameObject.SetActive(true);
-            }
-            StartBalanceUpdates();
-
-            await RunAvatarWorkflow(this.session);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"An error occurred during the EgoLink workflow: {ex.Message}");
-            if (uiLogin != null)
-            {
-                uiLogin.SetVisible(true);
-                uiLogin.SetStatusMessage($"Error: {ex.Message}");
-                uiLogin.SetInteractable(true);
-            }
-        }
-    }
-    
-    private async Task RunAvatarWorkflow(EgoLinkSession session)
+    private async Task RunAvatarWorkflow()
     {
         if (uiTextToSpeechDialog != null)
         {
@@ -555,7 +349,6 @@ public class Main : MonoBehaviour
         }
 
         _player = await LoadAndInitializeAvatar(
-            session,
             0f, 0f, 0f,
             gender,
             faceImagePath,
@@ -565,9 +358,9 @@ public class Main : MonoBehaviour
         );
     }
 
-    private async Task<EgoLinkAvatar> LoadAndInitializeAvatar(EgoLinkSession session, float x, float y, float z, float avatarGender, string avatarFaceImagePath, string targetClothing, string targetHair, Vector3 accessoryPositionOffset)
+    private async Task<EgoLinkAvatar> LoadAndInitializeAvatar(float x, float y, float z, float avatarGender, string avatarFaceImagePath, string targetClothing, string targetHair, Vector3 accessoryPositionOffset)
     {
-        EgoLinkAvatar avatar = new EgoLinkAvatar(avatarGenUrl, clothingUrl, hairUrl, session, _rpcClient);
+    /*    EgoLinkAvatar avatar = new EgoLinkAvatar(avatarGenUrl, clothingUrl, hairUrl, session, _rpcClient);
 
         if (await avatar.TryLoadFromCache(targetClothing, targetHair, avatarGender, age, weight))
         {
@@ -711,6 +504,8 @@ public class Main : MonoBehaviour
         }
 
         return avatar;
+*/
+        return null;
     }
 
     private void FixShaderOnLoadedModel(GameObject loadedModel)
