@@ -100,7 +100,7 @@ public class Main : MonoBehaviour
             try
             {
                 var location = "Living room.";
-                var clothing = "Jeans and a shit.";
+                var clothing = "Jeans and a shirt.";
                 var conversationpartner = "Dirk Jan Buter (original)";
 
                 _persona = new EgoLinkPersona(_rpcClient);
