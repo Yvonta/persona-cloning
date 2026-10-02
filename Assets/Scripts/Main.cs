@@ -99,32 +99,35 @@ public class Main : MonoBehaviour
         {
             try
             {
-                var location = "Living room.";
-                var clothing = "Jeans and a shirt.";
-                var conversationpartner = "Dirk Jan Buter (original)";
+                var location = "At my home.";
+                var clothing = "In my casual clothes.";
+                var conversationpartner = "Dirk Jan Buter";
 
-                _persona = new EgoLinkPersona(_rpcClient);
-                PersonaResult _personaResult = await _persona.GetPersonaAsync("Ronald Thump", location, clothing, conversationpartner); // 8 = Dirk Jan Buter
-                if(_personaResult.code == 0)
-                { 
-                    Debug.Log(_personaResult.data.role);    
+                //_persona = new EgoLinkPersona(_rpcClient);
+                //PersonaResult _personaResult = await _persona.GetPersonaAsync("Dirk Jan Buter", location, clothing, conversationpartner); // 8 = Dirk Jan Buter
+                //if(_personaResult.code == 0)
+                //{ 
+                    //Debug.Log(_personaResult.data.role);    
 
 
                     EgoLinkLLMStreaming llmStreamer = GetComponent<EgoLinkLLMStreaming>();
                     if (llmStreamer == null)
                     {
                         llmStreamer = gameObject.AddComponent<EgoLinkLLMStreaming>();
-                    }
+                    }   
                     llmStreamer.Initialize(apiToken);
-                    llmStreamer.SetSystemPrompt(_personaResult.data.role);
-                    ttsStreamer.SetVoice(_personaResult.data.voice);
+                    llmStreamer.AddPersonaVar("location", location);
+                    llmStreamer.AddPersonaVar("clothing", clothing);
+                    llmStreamer.AddPersonaVar("conversationpartner", conversationpartner);
+                    llmStreamer.SetPersonaName("Dirk Jan Buter");
+                    ttsStreamer.SetVoice("Dirk Jan");
 
                     llmStreamer.RequestStream(
                         text,
                         ttsStreamer.AddSentence,
                         llmUrl
                     );
-                }
+                //}
             }
             catch (System.Exception ex)
             {
